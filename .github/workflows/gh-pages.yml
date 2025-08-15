@@ -3,7 +3,7 @@ name: Deploy Docs to GitHub Pages (docToolchain via SDKMAN)
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -12,7 +12,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: true
 
 jobs:
@@ -28,41 +28,40 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
 
-      - name: Install docToolchain via SDKMAN + build HTML
+      - name: Build docs (docToolchain via SDKMAN)
         shell: bash
         run: |
           set -e
-          # --- SDKMAN + doctoolchain ---
+          # Install SDKMAN + docToolchain
           curl -s "https://get.sdkman.io" | bash
           source "$HOME/.sdkman/bin/sdkman-init.sh"
           sdk install doctoolchain
 
-          # Projekt-Root (hier liegt deine docToolchainConfig.groovy)
-          PROJ_DIR="$PWD"
-          cd "$PROJ_DIR"
-
-          # WICHTIG: docToolchain sucht teils nach 'Config.groovy' -> Mapping herstellen
-          if [ -f "docToolchainConfig.groovy" ]; then
-            cp -f docToolchainConfig.groovy Config.groovy
+          # Expect: docs/arc42/arc42.adoc exists
+          if [ ! -f docs/arc42/arc42.adoc ]; then
+            echo "Missing docs/arc42/arc42.adoc"; exit 1
           fi
 
-          # Optional: zeigen, welche Pfade in der Config stehen
-          echo "---- Config.groovy (head) ----"
-          head -n 60 Config.groovy || true
-          echo "--------------------------------"
+          # Minimal Config.groovy for CI
+          cat > Config.groovy <<'EOF'
+          inputPath  = 'docs/arc42'
+          outputPath = 'build'
+          asciidoc = [
+            inputFiles: ['arc42.adoc']
+          ]
+          EOF
 
-          # Build
-          doctoolchain "$PROJ_DIR" generateHTML
+          echo "Using Config.groovy:"
+          cat Config.groovy
 
-          # Standard-Output von docToolchain
-          OUT="build/html"
-          test -f "$OUT/index.html" || { echo "❌ $OUT/index.html nicht gefunden."; ls -R build || true; exit 1; }
+          # Build HTML
+          doctoolchain "$PWD" generateHTML
 
-          # Für Pages bereitstellen
+          # Prepare artifact for Pages
           rm -rf _site && mkdir -p _site
-          cp -a "$OUT"/. _site/
+          cp -a build/html/. _site/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

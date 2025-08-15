@@ -1,0 +1,68 @@
+= Wardley Map Editor – Architektur
+Oliver Karst
+:revnumber: 0.1
+:revdate: 2025-08-15
+:toc: left
+:toclevels: 3
+:sectnums:
+:sectnumlevels: 3
+:doctype: book
+:icons: font
+:source-highlighter: rouge
+:imagesdir: ./images
+
+// arc42 template, Version 8 (simplified)
+
+== 1. Einführung und Ziele
+
+Dieses Dokument beschreibt die Architektur des *Wardley Map Editors*.
+
+=== Aufgabenstellung
+Ein webbasiertes Tool zum Erstellen und Exportieren von Wardley Maps (SVG, draw.io).
+
+=== Qualitätsziele
+* Einfacher Einstieg
+* Offline nutzbar
+* Schneller Export
+
+== 2. Randbedingungen
+* Implementiert in Vanilla JavaScript + SVG
+* Deployment als statische Website
+
+== 3. Kontextabgrenzung
+image::context-diagram.png[Alt=Kontextdiagramm, width=80%]
+
+== 4. Lösungsstrategie
+Einfache Architektur ohne Frameworks, Speichern im LocalStorage.
+
+== 5. Bausteinsicht
+* Hauptkomponenten: MapRenderer, Exporter, StorageHandler
+
+== 6. Laufzeitsicht
+* Interaktion per Maus
+* Render-Events aktualisieren SVG
+
+== 7. Verteilungssicht
+* Deployment auf GitHub Pages
+
+== 8. Querschnittliche Konzepte
+* Mapping Wardley-Koordinaten (0..1) auf Pixelwerte
+
+== 9. Architekturentscheidungen
+* Siehe ADRs im Projekt
+
+== 10. Qualitätsanforderungen
+=== Qualitätsszenarien
+* <1 Sekunde Reaktionszeit bei Drag&Drop
+* <1 Minute bis zur fertigen Map
+
+== 11. Risiken und technische Schulden
+* Kein Touch-Support im MVP
+* Persistenz nur lokal
+
+== 12. Glossar
+[cols="1,3", options="header"]
+|===
+| Begriff | Definition
+| Wardley Map | Strategisches Visualisierungswerkzeug mit Value Chain und Evolution
+|===
