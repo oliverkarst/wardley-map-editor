@@ -1,49 +1,245 @@
-= Wardley Map Editor Dokumentation
-:doctype: book
-:toc:
+= arc42 Template: Wardley Map Editor
+:author: Software Architektur Team
+:email: team@example.com
+:revdate: {docdate}
+:revnumber: 1.0
+:version-label: Version
+:toc: left
+:toclevels: 4
 :sectanchors:
 :sectlinks:
+:sectnums:
+:source-highlighter: coderay
+:icons: font
+:experimental:
+:imagesdir: images
+:plantuml-server-url: http://www.plantuml.com/plantuml
+:kroki-server-url: https://kroki.io
 
-== Einführung
+// Projekt-spezifische Attribute
+:project-name: Wardley Map Editor
+:project-version: 1.0.0
+:project-repo: https://github.com/oliverkarst/wardley-map-editor
 
-Willkommen zur Dokumentation des Wardley Map Editors.
+[NOTE]
+====
+Diese Dokumentation wurde automatisch generiert und ist Teil des Live-Experiments "Software Architektur im Stream".
 
-== Überblick
-
-Der Wardley Map Editor ist ein Tool zur Erstellung und Bearbeitung von Wardley Maps.
+Projekt-Repository: {project-repo}
+====
 
 == 1. Einführung und Ziele
-Kurzbeschreibung des Systems.
+
+=== 1.1 Aufgabenstellung
+
+Der {project-name} ist ein webbasierter Editor zur Erstellung und Bearbeitung von Wardley Maps mit Export-Funktionalität nach draw.io. Das Projekt wurde live während einer Stream-Session entwickelt, um praktische AI-unterstützte Architekturarbeit zu demonstrieren.
+
+**Kernfunktionen:**
+- Visuelle Erstellung von Wardley Maps
+- Interaktive Positionierung von Komponenten auf Evolution/Value-Chain Achsen
+- Export nach draw.io XML Format
+- Browser-basierte Implementierung ohne Server-Dependencies
+
+=== 1.2 Qualitätsziele
+
+[cols="1,2,2"]
+|===
+|Priorität |Qualitätsmerkmal |Konkrete Szenarien
+
+|1 
+|**Usability** 
+|Intuitive Bedienung für Wardley Map-erfahrene Nutzer ohne Tutorial
+
+|2 
+|**Portability** 
+|Lauffähig in modernen Browsern (Chrome 90+, Firefox 88+, Safari 14+) ohne Installation
+
+|3 
+|**Performance** 
+|Map-Rendering unter 500ms für Maps mit bis zu 100 Komponenten
+|===
+
+=== 1.3 Stakeholder
+
+[cols="1,2,2"]
+|===
+|Rolle |Kontakt |Erwartungshaltung
+
+|**Software-Architekten** 
+|Primäre Zielgruppe 
+|Schnelle Visualisierung strategischer Architektur-Entscheidungen
+
+|**Business Analysten** 
+|Sekundäre Nutzer 
+|Einfache Erstellung von Wardley Maps für Strategie-Workshops
+
+|**Entwicklerteam** 
+|Live-Stream Teilnehmer 
+|Transparente, nachvollziehbare Architektur-Entscheidungen
+|===
 
 == 2. Randbedingungen
-Technische und organisatorische Rahmenbedingungen.
+
+=== 2.1 Technische Randbedingungen
+
+[cols="1,2"]
+|===
+|Constraint |Beschreibung
+
+|**Frontend-Only Architektur** 
+|Keine Server-Dependencies für Core-Funktionalität (GitHub Pages Deployment)
+
+|**JavaScript ES6+** 
+|Moderne Browser-Features, kein Transpiling erforderlich
+
+|**Canvas/SVG Rendering** 
+|Plattformübergreifende Grafik-Darstellung
+
+|**draw.io Kompatibilität** 
+|Export muss in draw.io ohne Anpassungen funktionieren
+|===
+
+=== 2.2 Organisatorische Randbedingungen
+
+[cols="1,2"]
+|===
+|Constraint |Beschreibung
+
+|**Live-Development** 
+|Architektur und Implementierung erfolgen transparent im Stream
+
+|**Zeit-Budget** 
+|1 Stunde für MVP-Prototyp verfügbar
+
+|**Open Source** 
+|MIT Lizenz, öffentlich verfügbar auf GitHub
+|===
 
 == 3. Kontextabgrenzung
-Externe Schnittstellen und Nachbarsysteme.
+
+=== 3.1 Fachlicher Kontext
+
+[plantuml, context-diagram, svg]
+....
+@startuml
+!define BOUNDARY_COLOR #1f2937
+!define ACTOR_COLOR #3b82f6
+!define SYSTEM_COLOR #10b981
+
+actor "Software Architekt" as architect <<User, ACTOR_COLOR>>
+actor "Business Analyst" as analyst <<User, ACTOR_COLOR>>
+
+rectangle "Browser Environment" as browser <<External System, BOUNDARY_COLOR>> {
+    component "Wardley Map Editor" as editor <<System, SYSTEM_COLOR>>
+}
+
+component "draw.io Desktop" as drawio <<External System, BOUNDARY_COLOR>>
+component "Confluence/Wiki" as wiki <<External System, BOUNDARY_COLOR>>
+
+architect --> editor : "Erstellt/Bearbeitet\nWardley Maps"
+analyst --> editor : "Visualisiert\nStrategien"
+
+editor --> drawio : "Exportiert XML"
+drawio --> wiki : "Integration in\nDokumentation"
+@enduml
+....
+
+=== 3.2 Technischer Kontext
+
+[plantuml, technical-context, svg]
+....
+@startuml
+!define BOUNDARY_COLOR #1f2937
+!define EXTERNAL_COLOR #ef4444
+!define SYSTEM_COLOR #10b981
+
+rectangle "Browser" as browser <<Runtime Environment, BOUNDARY_COLOR>> {
+    component "Wardley Map Editor" as editor <<Application, SYSTEM_COLOR>>
+    database "LocalStorage" as storage <<Browser API, BOUNDARY_COLOR>>
+    component "Canvas API" as canvas <<Browser API, BOUNDARY_COLOR>>
+}
+
+file "draw.io XML" as xml <<File Format, EXTERNAL_COLOR>>
+component "GitHub Pages" as pages <<Hosting, EXTERNAL_COLOR>>
+
+editor <--> storage : "Speichert/Lädt\nMaps (JSON)"
+editor --> canvas : "Rendert\nVisualisierung"
+editor --> xml : "Exportiert\nXML Format"
+pages --> browser : "Stellt Anwendung\nbereit (HTTPS)"
+@enduml
+....
 
 == 4. Lösungsstrategie
-Zentrale Entwurfsentscheidungen.
+
+=== 4.1 Technologie-Entscheidungen
+
+[cols="1,2,3"]
+|===
+|Aspekt |Entscheidung |Begründung
+
+|**Frontend Framework** 
+|Vanilla JavaScript 
+|Minimale Dependencies, maximale Browser-Kompatibilität
+
+|**Rendering** 
+|HTML5 Canvas 
+|Performante Grafik-Darstellung, einfache Interaktion
+
+|**State Management** 
+|Einfaches Objekt-Modell 
+|Ausreichend für MVP, später erweiterbar
+
+|**Build/Deploy** 
+|GitHub Pages + docToolchain 
+|Einfaches Hosting, automatisierte Dokumentation
+|===
+
+=== 4.2 Architektur-Muster
+
+**Hauptmuster:** Model-View-Controller (MVC)
+- **Model:** Wardley Map Datenstruktur (Components, Connections)
+- **View:** Canvas-basierte Visualisierung 
+- **Controller:** User Interaction Handling, Export Logic
+
+**Zusätzliche Patterns:**
+- **Command Pattern** für Undo/Redo Funktionalität
+- **Strategy Pattern** für verschiedene Export-Formate
+- **Observer Pattern** für View-Updates
 
 == 5. Bausteinsicht
-Wesentliche Bausteine/Module.
 
-== 6. Laufzeitsicht
-Wichtige Abläufe/Sequenzen.
+=== 5.1 Ebene 1 - System
 
-== 7. Verteilungssicht
-Deployment/Runtime-Umgebung.
+[plantuml, building-blocks-l1, svg]
+....
+@startuml
+!define COMPONENT_COLOR #3b82f6
+!define INTERFACE_COLOR #10b981
 
-== 8. Querschnittliche Konzepte
-Übergreifende Konzepte/Standards.
+package "Wardley Map Editor" <<System, COMPONENT_COLOR>> {
+    component "Map Editor UI" as ui <<Component, COMPONENT_COLOR>>
+    component "Data Model" as model <<Component, COMPONENT_COLOR>>
+    component "Export Engine" as export <<Component, COMPONENT_COLOR>>
+    component "Storage Manager" as storage <<Component, COMPONENT_COLOR>>
+}
 
-== 9. Architekturentscheidungen (ADRs)
-Verweise auf ADRs.
+interface "Canvas API" as canvasAPI <<Browser API, INTERFACE_COLOR>>
+interface "LocalStorage API" as storageAPI <<Browser API, INTERFACE_COLOR>>
+interface "File Download API" as fileAPI <<Browser API, INTERFACE_COLOR>>
 
-== 10. Qualitätsanforderungen
-Qualitätsziele und Szenarien.
+ui --> canvasAPI
+storage --> storageAPI
+export --> fileAPI
 
-== 11. Risiken und technische Schulden
-Bekannte Risiken/Debts.
+ui <--> model : "Updates/Queries"
+model <--> storage : "Persist/Load"
+model --> export : "Serialize"
+@enduml
+....
 
-== 12. Glossar
-Begriffe und Definitionen.
+=== 5.2 Ebene 2 - Komponenten
+
+**Map Editor UI**
+- Canvas Management
+- Event Handling (Mouse/Touch)
+- Component Positioni

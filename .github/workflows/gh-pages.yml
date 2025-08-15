@@ -63,7 +63,8 @@ jobs:
           
           echo "=== Installing docToolchain ==="
           sdk version
-          sdk install doctoolchain 3.4.0 < /dev/null
+          # Use non-interactive installation
+          echo "Y" | sdk install doctoolchain 3.4.0
           
           echo "=== Verifying installation ==="
           source "$HOME/.sdkman/bin/sdkman-init.sh"
@@ -97,18 +98,34 @@ jobs:
           pwd
           ls -la
           
+          # Pre-create required directories to avoid interactive prompts
+          mkdir -p build/html
+          mkdir -p build/docs
+          
+          # Disable interactive prompts by setting environment variables
+          export CI=true
+          export GRADLE_OPTS="-Dorg.gradle.daemon=false -Dorg.gradle.configureondemand=false"
+          
+          echo "=== Initialize docToolchain (non-interactive) ==="
+          # Run init command first to create necessary structure
+          echo "" | doctoolchain . init || true
+          
           echo "=== Running docToolchain generateHTML ==="
-          doctoolchain . generateHTML --info --stacktrace
+          # Use batch mode and disable daemon
+          doctoolchain . generateHTML --no-daemon --console=plain --info --stacktrace
           
           echo "=== Checking build output ==="
           if [ -d "build" ]; then
             echo "✅ Build directory exists"
+            find build -type f -name "*.html" | head -10
             ls -la build/
             if [ -d "build/html" ]; then
               echo "✅ HTML directory exists"
               ls -la build/html/
             else
               echo "❌ HTML directory missing"
+              echo "Available build content:"
+              find build -type f | head -20
               exit 1
             fi
           else
