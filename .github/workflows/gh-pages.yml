@@ -32,32 +32,23 @@ jobs:
       - name: Build docs with docToolchain (SDKMAN)
         shell: bash
         run: |
-          set -eo pipefail
+          set -e
 
-          # Preconditions
-          if [ ! -f docs/arc42/arc42.adoc ]; then
-            echo "Missing docs/arc42/arc42.adoc"; exit 1
-          fi
+          # Preflight: Quellen + Config vorhanden?
+          test -f docs/arc42/arc42.adoc || { echo "Fehlt: docs/arc42/arc42.adoc"; exit 1; }
+          test -f docToolchainConfig.groovy || { echo "Fehlt: docToolchainConfig.groovy im Repo-Root"; exit 1; }
+          grep -q "inputFiles" docToolchainConfig.groovy || { echo "In docToolchainConfig.groovy fehlt 'inputFiles'"; exit 1; }
 
-          # Install SDKMAN and docToolchain (kein 'set -u' verwenden!)
+          # SDKMAN + docToolchain in DIESEM Step installieren und initialisieren
           curl -s "https://get.sdkman.io" | bash
           source "$HOME/.sdkman/bin/sdkman-init.sh"
           sdk install doctoolchain
 
-          # Minimal config schreiben (beide Dateinamen zur Sicherheit)
-          : > docToolchainConfig.groovy
-          printf "inputPath  = 'docs/arc42'\n" >> docToolchainConfig.groovy
-          printf "outputPath = 'build'\n\n"     >> docToolchainConfig.groovy
-          printf "asciidoc = [ inputFiles: ['arc42.adoc'] ]\n" >> docToolchainConfig.groovy
-          cp -f docToolchainConfig.groovy Config.groovy
-
-          echo "Effective docToolchainConfig.groovy:"
-          cat docToolchainConfig.groovy
-
           # Build
           doctoolchain . generateHTML
 
-          # Pages-Artifact vorbereiten
+          # Ergebnis prüfen und für Pages bereitstellen
+          test -f build/html/index.html || { echo "Build hat keine build/html/index.html erzeugt"; exit 1; }
           rm -rf _site && mkdir -p _site
           cp -a build/html/. _site/
 
