@@ -1,4 +1,5 @@
-name: Deploy Docs to GitHub Pages (docToolchain via GHCR)
+# .github/workflows/gh-pages.yml
+name: Deploy Docs to GitHub Pages (docToolchain via SDKMAN)
 
 on:
   push:
@@ -9,7 +10,6 @@ permissions:
   contents: read
   pages: write
   id-token: write
-  packages: read   # <-- nötig, damit der Runner öffentliche GHCR-Images ziehen darf
 
 concurrency:
   group: "pages"
@@ -24,27 +24,36 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Build docs via docToolchain (Docker from GHCR)
+      - name: Set up Java (for docToolchain)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install docToolchain via SDKMAN and build HTML
         run: |
           set -e
-          IMAGE=ghcr.io/doctoolchain/dtc:latest
-          echo "Pulling $IMAGE..."
-          docker pull "$IMAGE"
+          # SDKMAN (non-interactive)
+          curl -s "https://get.sdkman.io" | bash
+          source "$HOME/.sdkman/bin/sdkman-init.sh"
+          sdk install doctoolchain
 
-          # Falls das Image den Befehl direkt erwartet vs. mit 'doctoolchain' – wir probieren beides.
-          if ! docker run --rm -v "$PWD":/work -w /work "$IMAGE" generateHTML; then
-            docker run --rm -v "$PWD":/work -w /work "$IMAGE" doctoolchain generateHTML
-          fi
+          # Falls deine Doku NICHT im Repo-Root liegt, hier anpassen (z. B. DOC_DIR=docs)
+          DOC_DIR="."
+          echo "Using DOC_DIR=$DOC_DIR"
 
-          # Output finden (Pfad bei Bedarf ergänzen)
+          # Build
+          doctoolchain "$DOC_DIR" generateHTML
+
+          # Output finden (bei Bedarf Pfade ergänzen)
           OUT=""
-          for p in build/html docs/build/html docs/site; do
+          for p in "$DOC_DIR/build/html" "$DOC_DIR/docs/build/html" "$DOC_DIR/docs/site"; do
             if [ -f "$p/index.html" ]; then OUT="$p"; break; fi
           done
-          [ -n "$OUT" ] || { echo "❌ Konnte generiertes HTML nicht finden."; ls -R; exit 1; }
+          [ -n "$OUT" ] || { echo "❌ Konnte generiertes HTML nicht finden."; ls -R "$DOC_DIR"; exit 1; }
           echo "Gefundener Output: $OUT"
 
-          # In _site kopieren, damit der Upload stabil ist
+          # Für Upload stabil unter _site bereitstellen
           rm -rf _site && mkdir -p _site
           cp -a "$OUT"/. _site/
 
