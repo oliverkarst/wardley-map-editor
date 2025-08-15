@@ -3,14 +3,18 @@
  * Baut genau EINE Datei: docs/arc42/arc42.adoc -> build/html/index.html
  */
 
-inputPath  = 'docs/arc42'
+inputPath  = 'docs'
 outputPath = 'build'
 
-// Asciidoctor-Optionen (leer lassen ist okay)
+// Asciidoctor-Optionen
 asciidoc = [
-    attributes : [:],
-    // WICHTIG: Pfade RELATIV zu inputPath. Kein File()-Wrapper, keine GPath-Syntax.
-    inputFiles: ['arc42.adoc']
+    attributes : [
+        'source-highlighter': 'coderay',
+        'toc': 'left',
+        'toclevels': '3'
+    ],
+    inputFiles: ['arc42/arc42.adoc']
 ]
 
-// (optional) weitere Tasks später: tasks = ['generateHTML']
+// Tasks für die HTML-Generierung
+tasks = ['generateHTML']
