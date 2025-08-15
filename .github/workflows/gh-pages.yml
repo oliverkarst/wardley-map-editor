@@ -29,27 +29,29 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Install docToolchain via SDKMAN
+      - name: Install docToolchain via SDKMAN and build HTML
         shell: bash
         run: |
           set -e
+          # Install SDKMAN + docToolchain (in diesem Step bleiben ENV/Path erhalten)
           curl -s "https://get.sdkman.io" | bash
           source "$HOME/.sdkman/bin/sdkman-init.sh"
           sdk install doctoolchain
 
-      - name: Build HTML with docToolchain
-        shell: bash
-        run: |
-          set -e
-          # Voraussetzung: docToolchainConfig.groovy im Repo-Root
-          doctoolchain "$PWD" generateHTML
-          # Ergebnis liegt unter build/html
-          test -f build/html/index.html
+          # Optionaler Check: Hauptdatei vorhanden?
+          test -f docs/arc42/arc42.adoc
+
+          # Build gemäß docToolchainConfig.groovy im Repo-Root
+          doctoolchain . generateHTML
+
+          # Für Pages bereitstellen
+          rm -rf _site && mkdir -p _site
+          cp -a build/html/. _site/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: build/html
+          path: _site
 
   deploy:
     needs: build
