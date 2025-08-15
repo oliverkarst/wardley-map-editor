@@ -1,30 +1,51 @@
-name: GitHub Pages
+# .github/workflows/gh-pages.yml
+name: Deploy Docs to GitHub Pages
 
 on:
   push:
-    branches:
-      - main  # Set a branch name to trigger deployment
-  pull_request:
-  workflow_dispatch: {}
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-    env:
-      DTC_HEADLES: true
     steps:
-      - uses: actions/checkout@v3
-      - name: setup
-        run: chmod +x dtcw
-      - name: generateSite
-        run: ./dtcw generateSite
-      - name: copyToPublic
-        run: cp -r ./build/microsite/output ./public
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        #        if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: actions/checkout@v4
+
+      # optional: wenn du docToolchain baust – sonst entfernen
+      - uses: actions/setup-java@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./public
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install docToolchain CLI
+        run: |
+          curl -sSLo dtcw https://raw.githubusercontent.com/docToolchain/docToolchain/main/bin/dtcw
+          chmod +x dtcw
+
+      - name: Generate HTML with docToolchain
+        run: ./dtcw generateHTML
+        # falls dein Output anders liegt, passe den Pfad unten an
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/html  # <-- ANPASSEN falls z.B. docs/build/html
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
