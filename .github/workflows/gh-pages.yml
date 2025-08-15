@@ -1,4 +1,4 @@
-name: Build & Deploy docs (docToolchain)
+name: Build & Deploy docs (Alternative)
 
 on:
   push:
@@ -31,122 +31,78 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Cache docToolchain
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.sdkman
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-doctoolchain-${{ hashFiles('docToolchainConfig.groovy') }}
-          restore-keys: |
-            ${{ runner.os }}-doctoolchain-
-
-      - name: Validate configuration
+      - name: Download and setup docToolchain
         run: |
-          echo "=== Validating project structure ==="
-          ls -la
-          echo "=== Checking docs directory ==="
-          ls -la docs/
-          echo "=== Checking arc42 directory ==="
-          ls -la docs/arc42/
-          echo "=== Checking docToolchain config ==="
-          cat docToolchainConfig.groovy
-          echo "=== Checking arc42.adoc exists ==="
-          test -f docs/arc42/arc42.adoc && echo "✅ arc42.adoc found" || echo "❌ arc42.adoc missing"
-
-      - name: Install docToolchain via SDKMAN
-        run: |
-          echo "=== Installing SDKMAN ==="
-          curl -s "https://get.sdkman.io" | bash
-          source "$HOME/.sdkman/bin/sdkman-init.sh"
+          echo "=== Downloading docToolchain directly ==="
+          wget -q https://github.com/docToolchain/docToolchain/releases/download/v3.4.0/docToolchain-3.4.0.zip
+          unzip -q docToolchain-3.4.0.zip
+          chmod +x docToolchain-3.4.0/bin/doctoolchain
           
-          echo "=== Installing docToolchain ==="
-          sdk version
-          # Use non-interactive installation
-          echo "Y" | sdk install doctoolchain 3.4.0
+          echo "=== Verifying docToolchain ==="
+          ./docToolchain-3.4.0/bin/doctoolchain --version
           
-          echo "=== Verifying installation ==="
-          source "$HOME/.sdkman/bin/sdkman-init.sh"
-          sdk current doctoolchain
-          
-          # Alternative: Direct installation if SDKMAN fails
-          if ! command -v doctoolchain &> /dev/null; then
-            echo "=== SDKMAN installation failed, trying direct download ==="
-            wget -O doctoolchain.zip https://github.com/docToolchain/docToolchain/releases/download/v3.4.0/docToolchain-3.4.0.zip
-            unzip doctoolchain.zip
-            chmod +x docToolchain-3.4.0/bin/doctoolchain
-            export PATH="$PWD/docToolchain-3.4.0/bin:$PATH"
-          fi
-
-      - name: Build documentation
-        run: |
           echo "=== Setting up environment ==="
-          source "$HOME/.sdkman/bin/sdkman-init.sh" || true
-          
-          # Ensure docToolchain is in PATH
-          if command -v doctoolchain &> /dev/null; then
-            echo "✅ docToolchain found in PATH"
-            doctoolchain . --version
-          else
-            echo "⚠️  docToolchain not in PATH, adding manually"
-            export PATH="$HOME/.sdkman/candidates/doctoolchain/current/bin:$PATH"
-            export PATH="$PWD/docToolchain-3.4.0/bin:$PATH"
-          fi
-          
-          echo "=== Current working directory ==="
-          pwd
+          export PATH="$PWD/docToolchain-3.4.0/bin:$PATH"
+          echo "PATH=$PWD/docToolchain-3.4.0/bin:$PATH" >> $GITHUB_ENV
+
+      - name: Validate project structure
+        run: |
+          echo "=== Project structure ==="
           ls -la
-          
-          # Pre-create required directories to avoid interactive prompts
-          mkdir -p build/html
-          mkdir -p build/docs
-          
-          # Disable interactive prompts by setting environment variables
-          export CI=true
-          export GRADLE_OPTS="-Dorg.gradle.daemon=false -Dorg.gradle.configureondemand=false"
-          
-          echo "=== Initialize docToolchain (non-interactive) ==="
-          # Run init command first to create necessary structure
-          echo "" | doctoolchain . init || true
-          
-          echo "=== Running docToolchain generateHTML ==="
-          # Use batch mode and disable daemon
-          doctoolchain . generateHTML --no-daemon --console=plain --info --stacktrace
-          
-          echo "=== Checking build output ==="
-          if [ -d "build" ]; then
-            echo "✅ Build directory exists"
-            find build -type f -name "*.html" | head -10
-            ls -la build/
-            if [ -d "build/html" ]; then
-              echo "✅ HTML directory exists"
-              ls -la build/html/
-            else
-              echo "❌ HTML directory missing"
-              echo "Available build content:"
-              find build -type f | head -20
-              exit 1
-            fi
+          echo "=== docs/ content ==="
+          ls -la docs/
+          echo "=== arc42/ content ==="
+          ls -la docs/arc42/
+          echo "=== Checking main document ==="
+          if [ -f "docs/arc42/arc42.adoc" ]; then
+            echo "✅ Main document found"
+            head -20 docs/arc42/arc42.adoc
           else
-            echo "❌ Build directory missing"
+            echo "❌ Main document missing"
             exit 1
           fi
 
-      - name: Prepare Pages artifact
+      - name: Build documentation with Gradle wrapper
         run: |
-          echo "=== Preparing Pages deployment ==="
+          # Create Gradle wrapper if it doesn't exist
+          if [ ! -f "gradlew" ]; then
+            echo "=== Creating Gradle wrapper ==="
+            ./docToolchain-3.4.0/bin/doctoolchain . initGradleWrapper
+          fi
+          
+          # Make gradlew executable
+          chmod +x gradlew
+          
+          echo "=== Building with Gradle ==="
+          export GRADLE_OPTS="-Dorg.gradle.daemon=false"
+          ./gradlew generateHTML --no-daemon --console=plain --stacktrace
+          
+          echo "=== Checking output ==="
+          find . -name "*.html" -type f
+          
+          if [ -d "build/html" ] && [ -f "build/html/index.html" ]; then
+            echo "✅ HTML output generated successfully"
+            ls -la build/html/
+          else
+            echo "❌ HTML generation failed"
+            echo "Build directory content:"
+            find build -type f 2>/dev/null || echo "No build directory found"
+            exit 1
+          fi
+
+      - name: Prepare GitHub Pages
+        run: |
+          echo "=== Preparing deployment ==="
           rm -rf _site
           mkdir -p _site
           
-          if [ -f "build/html/index.html" ]; then
+          # Copy HTML files
+          if [ -d "build/html" ]; then
             cp -r build/html/* _site/
-            echo "✅ Copied HTML files to _site"
+            echo "✅ Files copied to _site"
             ls -la _site/
           else
-            echo "❌ No index.html found in build/html/"
-            echo "Available files in build/:"
-            find build/ -type f -name "*.html" || echo "No HTML files found"
+            echo "❌ No HTML files to deploy"
             exit 1
           fi
 
