@@ -1,5 +1,4 @@
-# .github/workflows/gh-pages.yml
-name: Deploy Docs to GitHub Pages (docToolchain via SDKMAN)
+name: Deploy Docs to GitHub Pages (docToolchain)
 
 on:
   push:
@@ -24,51 +23,33 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Java (for docToolchain)
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      - name: Build docs (docToolchain via SDKMAN)
+      - name: Install docToolchain via SDKMAN
         shell: bash
         run: |
           set -e
-
-          # 0) Preconditions
-          if [ ! -f docs/arc42/arc42.adoc ]; then
-            echo "Missing docs/arc42/arc42.adoc"; exit 1
-          fi
-
-          # 1) Install SDKMAN + docToolchain
           curl -s "https://get.sdkman.io" | bash
           source "$HOME/.sdkman/bin/sdkman-init.sh"
           sdk install doctoolchain
 
-          # 2) Create CI config (docToolchain reads docToolchainConfig.groovy)
-          cat > docToolchainConfig.groovy <<'EOF'
-          inputPath  = 'docs/arc42'
-          outputPath = 'build'
-
-          asciidoc = [
-            inputFiles: ['arc42.adoc']
-          ]
-          EOF
-
-          echo "Using docToolchainConfig.groovy:"
-          cat docToolchainConfig.groovy
-
-          # 3) Build HTML
+      - name: Build HTML with docToolchain
+        shell: bash
+        run: |
+          set -e
+          # Voraussetzung: docToolchainConfig.groovy im Repo-Root
           doctoolchain "$PWD" generateHTML
-
-          # 4) Prepare artifact for Pages
-          rm -rf _site && mkdir -p _site
-          cp -a build/html/. _site/
+          # Ergebnis liegt unter build/html
+          test -f build/html/index.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: build/html
 
   deploy:
     needs: build

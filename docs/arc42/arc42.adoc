@@ -1,7 +1,4 @@
 = Wardley Map Editor – Architektur
-Oliver Karst
-:revnumber: 0.1
-:revdate: 2025-08-15
 :toc: left
 :toclevels: 3
 :sectnums:
@@ -9,60 +6,39 @@ Oliver Karst
 :doctype: book
 :icons: font
 :source-highlighter: rouge
-:imagesdir: ./images
-
-// arc42 template, Version 8 (simplified)
 
 == 1. Einführung und Ziele
-
-Dieses Dokument beschreibt die Architektur des *Wardley Map Editors*.
-
-=== Aufgabenstellung
-Ein webbasiertes Tool zum Erstellen und Exportieren von Wardley Maps (SVG, draw.io).
-
-=== Qualitätsziele
-* Einfacher Einstieg
-* Offline nutzbar
-* Schneller Export
+Kurzbeschreibung des Systems.
 
 == 2. Randbedingungen
-* Implementiert in Vanilla JavaScript + SVG
-* Deployment als statische Website
+Technische und organisatorische Rahmenbedingungen.
 
 == 3. Kontextabgrenzung
-image::context-diagram.png[Alt=Kontextdiagramm, width=80%]
+Externe Schnittstellen und Nachbarsysteme.
 
 == 4. Lösungsstrategie
-Einfache Architektur ohne Frameworks, Speichern im LocalStorage.
+Zentrale Entwurfsentscheidungen.
 
 == 5. Bausteinsicht
-* Hauptkomponenten: MapRenderer, Exporter, StorageHandler
+Wesentliche Bausteine/Module.
 
 == 6. Laufzeitsicht
-* Interaktion per Maus
-* Render-Events aktualisieren SVG
+Wichtige Abläufe/Sequenzen.
 
 == 7. Verteilungssicht
-* Deployment auf GitHub Pages
+Deployment/Runtime-Umgebung.
 
 == 8. Querschnittliche Konzepte
-* Mapping Wardley-Koordinaten (0..1) auf Pixelwerte
+Übergreifende Konzepte/Standards.
 
-== 9. Architekturentscheidungen
-* Siehe ADRs im Projekt
+== 9. Architekturentscheidungen (ADRs)
+Verweise auf ADRs.
 
 == 10. Qualitätsanforderungen
-=== Qualitätsszenarien
-* <1 Sekunde Reaktionszeit bei Drag&Drop
-* <1 Minute bis zur fertigen Map
+Qualitätsziele und Szenarien.
 
 == 11. Risiken und technische Schulden
-* Kein Touch-Support im MVP
-* Persistenz nur lokal
+Bekannte Risiken/Debts.
 
 == 12. Glossar
-[cols="1,3", options="header"]
-|===
-| Begriff | Definition
-| Wardley Map | Strategisches Visualisierungswerkzeug mit Value Chain und Evolution
-|===
+Begriffe und Definitionen.
