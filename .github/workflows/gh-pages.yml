@@ -34,32 +34,34 @@ jobs:
         shell: bash
         run: |
           set -e
-          # Install SDKMAN + docToolchain
-          curl -s "https://get.sdkman.io" | bash
-          source "$HOME/.sdkman/bin/sdkman-init.sh"
-          sdk install doctoolchain
 
-          # Expect: docs/arc42/arc42.adoc exists
+          # 0) Preconditions
           if [ ! -f docs/arc42/arc42.adoc ]; then
             echo "Missing docs/arc42/arc42.adoc"; exit 1
           fi
 
-          # Minimal Config.groovy for CI
-          cat > Config.groovy <<'EOF'
+          # 1) Install SDKMAN + docToolchain
+          curl -s "https://get.sdkman.io" | bash
+          source "$HOME/.sdkman/bin/sdkman-init.sh"
+          sdk install doctoolchain
+
+          # 2) Create CI config (docToolchain reads docToolchainConfig.groovy)
+          cat > docToolchainConfig.groovy <<'EOF'
           inputPath  = 'docs/arc42'
           outputPath = 'build'
+
           asciidoc = [
             inputFiles: ['arc42.adoc']
           ]
           EOF
 
-          echo "Using Config.groovy:"
-          cat Config.groovy
+          echo "Using docToolchainConfig.groovy:"
+          cat docToolchainConfig.groovy
 
-          # Build HTML
+          # 3) Build HTML
           doctoolchain "$PWD" generateHTML
 
-          # Prepare artifact for Pages
+          # 4) Prepare artifact for Pages
           rm -rf _site && mkdir -p _site
           cp -a build/html/. _site/
 
