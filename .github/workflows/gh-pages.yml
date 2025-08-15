@@ -1,5 +1,4 @@
-# .github/workflows/gh-pages.yml
-name: Deploy Docs to GitHub Pages (docToolchain)
+name: Build & Deploy docs (docToolchain)
 
 on:
   push:
@@ -30,32 +29,30 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Build docs with docToolchain
+      - name: Build docs with docToolchain (SDKMAN)
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
 
           # Preconditions
-          test -f docs/arc42/arc42.adoc || { echo "docs/arc42/arc42.adoc fehlt"; exit 1; }
+          if [ ! -f docs/arc42/arc42.adoc ]; then
+            echo "Missing docs/arc42/arc42.adoc"; exit 1
+          fi
 
-          # SDKMAN + docToolchain
+          # Install SDKMAN and docToolchain (kein 'set -u' verwenden!)
           curl -s "https://get.sdkman.io" | bash
           source "$HOME/.sdkman/bin/sdkman-init.sh"
           sdk install doctoolchain
 
-          # Minimal Config.groovy ohne Heredoc erzeugen
-          : > Config.groovy
-          printf "%s\n" \
-            "inputPath  = 'docs/arc42'" \
-            "outputPath = 'build'" \
-            "" \
-            "asciidoc = [" \
-            "  inputFiles: ['arc42.adoc']" \
-            "]" \
-            >> Config.groovy
+          # Minimal config schreiben (beide Dateinamen zur Sicherheit)
+          : > docToolchainConfig.groovy
+          printf "inputPath  = 'docs/arc42'\n" >> docToolchainConfig.groovy
+          printf "outputPath = 'build'\n\n"     >> docToolchainConfig.groovy
+          printf "asciidoc = [ inputFiles: ['arc42.adoc'] ]\n" >> docToolchainConfig.groovy
+          cp -f docToolchainConfig.groovy Config.groovy
 
-          echo "Config.groovy erstellt:"
-          cat Config.groovy
+          echo "Effective docToolchainConfig.groovy:"
+          cat docToolchainConfig.groovy
 
           # Build
           doctoolchain . generateHTML
