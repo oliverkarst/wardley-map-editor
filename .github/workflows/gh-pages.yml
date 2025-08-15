@@ -1,15 +1,15 @@
-name: Deploy Docs to GitHub Pages (docToolchain Docker)
+name: Deploy Docs to GitHub Pages (docToolchain via GHCR)
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
 
-# Für Pages-Deployment per Actions
 permissions:
   contents: read
   pages: write
   id-token: write
+  packages: read   # <-- nötig, damit der Runner öffentliche GHCR-Images ziehen darf
 
 concurrency:
   group: "pages"
@@ -24,13 +24,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Build docs via docToolchain (Docker)
+      - name: Build docs via docToolchain (Docker from GHCR)
         run: |
           set -e
-          # Baue die Doku im Repo-Root (Config: docToolchainConfig.groovy)
-          docker run --rm -v "$PWD":/work -w /work doctoolchain/dtc:latest generateHTML
+          IMAGE=ghcr.io/doctoolchain/dtc:latest
+          echo "Pulling $IMAGE..."
+          docker pull "$IMAGE"
 
-          # Output-Pfad automatisch finden (passe Liste bei Bedarf an)
+          # Falls das Image den Befehl direkt erwartet vs. mit 'doctoolchain' – wir probieren beides.
+          if ! docker run --rm -v "$PWD":/work -w /work "$IMAGE" generateHTML; then
+            docker run --rm -v "$PWD":/work -w /work "$IMAGE" doctoolchain generateHTML
+          fi
+
+          # Output finden (Pfad bei Bedarf ergänzen)
           OUT=""
           for p in build/html docs/build/html docs/site; do
             if [ -f "$p/index.html" ]; then OUT="$p"; break; fi
@@ -38,7 +44,7 @@ jobs:
           [ -n "$OUT" ] || { echo "❌ Konnte generiertes HTML nicht finden."; ls -R; exit 1; }
           echo "Gefundener Output: $OUT"
 
-          # In _site kopieren, damit Upload-Schritt einen stabilen Pfad hat
+          # In _site kopieren, damit der Upload stabil ist
           rm -rf _site && mkdir -p _site
           cp -a "$OUT"/. _site/
 
