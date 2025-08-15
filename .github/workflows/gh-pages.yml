@@ -39,13 +39,14 @@ jobs:
           test -f docToolchainConfig.groovy || { echo "Fehlt: docToolchainConfig.groovy im Repo-Root"; exit 1; }
           grep -q "inputFiles" docToolchainConfig.groovy || { echo "In docToolchainConfig.groovy fehlt 'inputFiles'"; exit 1; }
 
-          # SDKMAN + docToolchain in DIESEM Step installieren und initialisieren
+          # SDKMAN + docToolchain installieren und initialisieren
           curl -s "https://get.sdkman.io" | bash
           source "$HOME/.sdkman/bin/sdkman-init.sh"
-          sdk install doctoolchain
+          yes | sdk install doctoolchain 3.4.0
+          export PATH="$HOME/.sdkman/candidates/doctoolchain/3.4.0/bin:$PATH"
 
-          # Build
-          doctoolchain . generateHTML
+          # Build mit erhöhter Debugausgabe
+          doctoolchain . generateHTML --stacktrace --info
 
           # Ergebnis prüfen und für Pages bereitstellen
           test -f build/html/index.html || { echo "Build hat keine build/html/index.html erzeugt"; exit 1; }

@@ -1,11 +1,16 @@
-= Wardley Map Editor – Architektur
-:toc: left
-:toclevels: 3
-:sectnums:
-:sectnumlevels: 3
+= Wardley Map Editor Dokumentation
 :doctype: book
-:icons: font
-:source-highlighter: rouge
+:toc:
+:sectanchors:
+:sectlinks:
+
+== Einführung
+
+Willkommen zur Dokumentation des Wardley Map Editors.
+
+== Überblick
+
+Der Wardley Map Editor ist ein Tool zur Erstellung und Bearbeitung von Wardley Maps.
 
 == 1. Einführung und Ziele
 Kurzbeschreibung des Systems.
