@@ -30,30 +30,37 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Install docToolchain via SDKMAN and build HTML
+      - name: Install docToolchain via SDKMAN + build HTML
+        shell: bash
         run: |
           set -e
-          # SDKMAN (non-interactive)
+          # --- SDKMAN + doctoolchain ---
           curl -s "https://get.sdkman.io" | bash
           source "$HOME/.sdkman/bin/sdkman-init.sh"
           sdk install doctoolchain
 
-          # Falls deine Doku NICHT im Repo-Root liegt, hier anpassen (z. B. DOC_DIR=docs)
-          DOC_DIR="."
-          echo "Using DOC_DIR=$DOC_DIR"
+          # Projekt-Root (hier liegt deine docToolchainConfig.groovy)
+          PROJ_DIR="$PWD"
+          cd "$PROJ_DIR"
+
+          # WICHTIG: docToolchain sucht teils nach 'Config.groovy' -> Mapping herstellen
+          if [ -f "docToolchainConfig.groovy" ]; then
+            cp -f docToolchainConfig.groovy Config.groovy
+          fi
+
+          # Optional: zeigen, welche Pfade in der Config stehen
+          echo "---- Config.groovy (head) ----"
+          head -n 60 Config.groovy || true
+          echo "--------------------------------"
 
           # Build
-          doctoolchain "$DOC_DIR" generateHTML
+          doctoolchain "$PROJ_DIR" generateHTML
 
-          # Output finden (bei Bedarf Pfade ergänzen)
-          OUT=""
-          for p in "$DOC_DIR/build/html" "$DOC_DIR/docs/build/html" "$DOC_DIR/docs/site"; do
-            if [ -f "$p/index.html" ]; then OUT="$p"; break; fi
-          done
-          [ -n "$OUT" ] || { echo "❌ Konnte generiertes HTML nicht finden."; ls -R "$DOC_DIR"; exit 1; }
-          echo "Gefundener Output: $OUT"
+          # Standard-Output von docToolchain
+          OUT="build/html"
+          test -f "$OUT/index.html" || { echo "❌ $OUT/index.html nicht gefunden."; ls -R build || true; exit 1; }
 
-          # Für Upload stabil unter _site bereitstellen
+          # Für Pages bereitstellen
           rm -rf _site && mkdir -p _site
           cp -a "$OUT"/. _site/
 
