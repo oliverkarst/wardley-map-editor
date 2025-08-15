@@ -3,6 +3,8 @@ name: Build & Deploy docs (docToolchain)
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -11,7 +13,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -26,32 +28,110 @@ jobs:
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: "17"
+          distribution: 'temurin'
+          java-version: '17'
 
-      - name: Build docs with docToolchain (SDKMAN)
-        shell: bash
+      - name: Cache docToolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.sdkman
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-doctoolchain-${{ hashFiles('docToolchainConfig.groovy') }}
+          restore-keys: |
+            ${{ runner.os }}-doctoolchain-
+
+      - name: Validate configuration
         run: |
-          set -e
+          echo "=== Validating project structure ==="
+          ls -la
+          echo "=== Checking docs directory ==="
+          ls -la docs/
+          echo "=== Checking arc42 directory ==="
+          ls -la docs/arc42/
+          echo "=== Checking docToolchain config ==="
+          cat docToolchainConfig.groovy
+          echo "=== Checking arc42.adoc exists ==="
+          test -f docs/arc42/arc42.adoc && echo "✅ arc42.adoc found" || echo "❌ arc42.adoc missing"
 
-          # Preflight: Quellen + Config vorhanden?
-          test -f docs/arc42/arc42.adoc || { echo "Fehlt: docs/arc42/arc42.adoc"; exit 1; }
-          test -f docToolchainConfig.groovy || { echo "Fehlt: docToolchainConfig.groovy im Repo-Root"; exit 1; }
-          grep -q "inputFiles" docToolchainConfig.groovy || { echo "In docToolchainConfig.groovy fehlt 'inputFiles'"; exit 1; }
-
-          # SDKMAN + docToolchain installieren und initialisieren
+      - name: Install docToolchain via SDKMAN
+        run: |
+          echo "=== Installing SDKMAN ==="
           curl -s "https://get.sdkman.io" | bash
           source "$HOME/.sdkman/bin/sdkman-init.sh"
-          yes | sdk install doctoolchain 3.4.0
-          export PATH="$HOME/.sdkman/candidates/doctoolchain/3.4.0/bin:$PATH"
+          
+          echo "=== Installing docToolchain ==="
+          sdk version
+          sdk install doctoolchain 3.4.0 < /dev/null
+          
+          echo "=== Verifying installation ==="
+          source "$HOME/.sdkman/bin/sdkman-init.sh"
+          sdk current doctoolchain
+          
+          # Alternative: Direct installation if SDKMAN fails
+          if ! command -v doctoolchain &> /dev/null; then
+            echo "=== SDKMAN installation failed, trying direct download ==="
+            wget -O doctoolchain.zip https://github.com/docToolchain/docToolchain/releases/download/v3.4.0/docToolchain-3.4.0.zip
+            unzip doctoolchain.zip
+            chmod +x docToolchain-3.4.0/bin/doctoolchain
+            export PATH="$PWD/docToolchain-3.4.0/bin:$PATH"
+          fi
 
-          # Build mit erhöhter Debugausgabe
-          doctoolchain . generateHTML --stacktrace --info
+      - name: Build documentation
+        run: |
+          echo "=== Setting up environment ==="
+          source "$HOME/.sdkman/bin/sdkman-init.sh" || true
+          
+          # Ensure docToolchain is in PATH
+          if command -v doctoolchain &> /dev/null; then
+            echo "✅ docToolchain found in PATH"
+            doctoolchain . --version
+          else
+            echo "⚠️  docToolchain not in PATH, adding manually"
+            export PATH="$HOME/.sdkman/candidates/doctoolchain/current/bin:$PATH"
+            export PATH="$PWD/docToolchain-3.4.0/bin:$PATH"
+          fi
+          
+          echo "=== Current working directory ==="
+          pwd
+          ls -la
+          
+          echo "=== Running docToolchain generateHTML ==="
+          doctoolchain . generateHTML --info --stacktrace
+          
+          echo "=== Checking build output ==="
+          if [ -d "build" ]; then
+            echo "✅ Build directory exists"
+            ls -la build/
+            if [ -d "build/html" ]; then
+              echo "✅ HTML directory exists"
+              ls -la build/html/
+            else
+              echo "❌ HTML directory missing"
+              exit 1
+            fi
+          else
+            echo "❌ Build directory missing"
+            exit 1
+          fi
 
-          # Ergebnis prüfen und für Pages bereitstellen
-          test -f build/html/index.html || { echo "Build hat keine build/html/index.html erzeugt"; exit 1; }
-          rm -rf _site && mkdir -p _site
-          cp -a build/html/. _site/
+      - name: Prepare Pages artifact
+        run: |
+          echo "=== Preparing Pages deployment ==="
+          rm -rf _site
+          mkdir -p _site
+          
+          if [ -f "build/html/index.html" ]; then
+            cp -r build/html/* _site/
+            echo "✅ Copied HTML files to _site"
+            ls -la _site/
+          else
+            echo "❌ No index.html found in build/html/"
+            echo "Available files in build/:"
+            find build/ -type f -name "*.html" || echo "No HTML files found"
+            exit 1
+          fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
@@ -59,11 +139,13 @@ jobs:
           path: _site
 
   deploy:
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - id: deployment
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
