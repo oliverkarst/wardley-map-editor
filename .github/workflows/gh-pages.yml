@@ -1,10 +1,11 @@
-# .github/workflows/gh-pages.yml
-name: Deploy Docs to GitHub Pages
+name: Deploy Docs to GitHub Pages (docToolchain Docker)
 
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
+# Für Pages-Deployment per Actions
 permissions:
   contents: read
   pages: write
@@ -18,27 +19,33 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      # optional: wenn du docToolchain baust – sonst entfernen
-      - uses: actions/setup-java@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          distribution: temurin
-          java-version: '17'
+          fetch-depth: 0
 
-      - name: Install docToolchain CLI
+      - name: Build docs via docToolchain (Docker)
         run: |
-          curl -sSLo dtcw https://raw.githubusercontent.com/docToolchain/docToolchain/main/bin/dtcw
-          chmod +x dtcw
+          set -e
+          # Baue die Doku im Repo-Root (Config: docToolchainConfig.groovy)
+          docker run --rm -v "$PWD":/work -w /work doctoolchain/dtc:latest generateHTML
 
-      - name: Generate HTML with docToolchain
-        run: ./dtcw generateHTML
-        # falls dein Output anders liegt, passe den Pfad unten an
+          # Output-Pfad automatisch finden (passe Liste bei Bedarf an)
+          OUT=""
+          for p in build/html docs/build/html docs/site; do
+            if [ -f "$p/index.html" ]; then OUT="$p"; break; fi
+          done
+          [ -n "$OUT" ] || { echo "❌ Konnte generiertes HTML nicht finden."; ls -R; exit 1; }
+          echo "Gefundener Output: $OUT"
+
+          # In _site kopieren, damit Upload-Schritt einen stabilen Pfad hat
+          rm -rf _site && mkdir -p _site
+          cp -a "$OUT"/. _site/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: build/html  # <-- ANPASSEN falls z.B. docs/build/html
+          path: _site
 
   deploy:
     needs: build
